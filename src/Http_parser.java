@@ -1,22 +1,21 @@
-import java.net.*; 
-import java.io.*; 
+import java.net.*;
+import java.io.*;
 import java.text.*;
 import java.util.*;
 
-public class Http_parser
-{ 
-	private static final String[][] HTTP_REPLY = {{"200", "OK"},{"400", "Bad Request"}, {"404", "Not Found"}};
-  private BufferedReader reader;
-  private String method, url;
-  private Hashtable headers, params;
-  private String ver;
-  private static final boolean DEBUG = true;
-	// initialize socket and input output streams 
-	// constructor to put ip address and port 
-	public Http_parser(InputStreamReader is) 
-	{ 
+public class Http_parser {
+	private static final String[][] HTTP_REPLY = { { "200", "OK" }, { "400", "Bad Request" }, { "404", "Not Found" } };
+	private BufferedReader reader;
+	private String method, url;
+	private Hashtable headers, params;
+	private String ver;
+	private static final boolean DEBUG = false;
+
+	// initialize socket and input output streams
+	// constructor to put ip address and port
+	public Http_parser(InputStreamReader is) {
 		this.reader = new BufferedReader(is);
-		this.method ="";
+		this.method = "";
 		this.url = "";
 		this.ver = "";
 		this.headers = new Hashtable();
@@ -24,143 +23,157 @@ public class Http_parser
 	}
 
 	public int parseRequest() throws IOException {
-    String prms[], cmd[], temp[];
-    int ret, idx, i;
+		String prms[], cmd[], temp[];
+		int ret, idx, i;
 
-    ret = 200; // default is OK now
-    String l1 = reader.readLine();
-    if (l1 == null || l1.length() == 0) return 400;
+		ret = 200; // default is OK now
+		String l1 = reader.readLine();
+		if (l1 == null || l1.length() == 0)
+			return 400;
 
-    cmd = l1.split("\\s");
-    if (cmd.length != 3) {
-      return 400;
-    }
+		cmd = l1.split("\\s");
+		if (cmd.length != 3) {
+			return 400;
+		}
 
-    if (cmd[2].indexOf("HTTP/1.1") == 0){
+		if (cmd[2].indexOf("HTTP/1.1") == 0) {
 			// Get version num
 			this.ver = cmd[2].substring(5);
-			if (DEBUG) {
-				System.out.println("HTTP Version Number:" + this.ver);
+		} else {
+			if (DEBUG) 
+				System.out.println("HTTP ver WRONG");
+			ret = 400;
+		}
+		if (cmd[0].equals("GET")) {
+			method = cmd[0];
+
+			idx = cmd[1].indexOf('?');
+			if (idx < 0)
+				url = cmd[1];
+			else {
+				url = URLDecoder.decode(cmd[1].substring(0, idx), "ISO-8859-1");
+				prms = cmd[1].substring(idx + 1).split("&");
+
+				params = new Hashtable();
+				for (i = 0; i < prms.length; i++) {
+					temp = prms[i].split("=");
+					if (temp.length == 2) {
+						// we use ISO-8859-1 as temporary charset and then
+						// String.getBytes("ISO-8859-1") to get the data
+						params.put(URLDecoder.decode(temp[0], "ISO-8859-1"), URLDecoder.decode(temp[1], "ISO-8859-1"));
+					} else if (temp.length == 1 && prms[i].indexOf('=') == prms[i].length() - 1) {
+						// handle empty string separatedly
+						params.put(URLDecoder.decode(temp[0], "ISO-8859-1"), "");
+					}
+				}
 			}
+			if (!urlExist()) {
+				return 404;
+			}
+			parseHeaders();
+			if (headers == null) {
+				if (DEBUG) 
+					System.out.println("headers none");
+				ret = 400;
+			}
+		} else if (cmd[0].equals("POST")) {
+			// Not implemented
+		} else {
+			// Bad request
+			if (DEBUG) 
+				System.out.println("Unknown Method WRONG");
+			ret = 400;
+		}
+
+//		if (this.ver.equals("1.1") && getHeader("Host") == null) {
+//			ret = 400;
+//		}
+
+		return ret;
 	}
-    else ret = 400;
+	private boolean urlExist() {
+		File tmpDir = new File("." + this.url);
+		return tmpDir.exists();
+	}
+	private void parseHeaders() throws IOException {
+		String line;
+		int idx;
 
-		
-    if (cmd[0].equals("GET")) {
-      method = cmd[0];
+		line = reader.readLine();
+		while (!line.equals("")) {
+			idx = line.indexOf(':');
+			if (idx < 0) {
+				headers = null;
+				break;
+			} else {
+				headers.put(line.substring(0, idx).toLowerCase(), line.substring(idx + 1).trim());
+			}
+			line = reader.readLine();
+		}
+	}
 
-      idx = cmd[1].indexOf('?');
-      if (idx < 0) url = cmd[1];
-      else {
-        url = URLDecoder.decode(cmd[1].substring(0, idx), "ISO-8859-1");
-        prms = cmd[1].substring(idx+1).split("&");
+	public String getMethod() {
+		return method;
+	}
 
-        params = new Hashtable();
-        for (i=0; i<prms.length; i++) {
-          temp = prms[i].split("=");
-          if (temp.length == 2) {
-            // we use ISO-8859-1 as temporary charset and then
-            // String.getBytes("ISO-8859-1") to get the data
-            params.put(URLDecoder.decode(temp[0], "ISO-8859-1"),
-                       URLDecoder.decode(temp[1], "ISO-8859-1"));
-          }
-          else if(temp.length == 1 && prms[i].indexOf('=') == prms[i].length()-1) {
-            // handle empty string separatedly
-            params.put(URLDecoder.decode(temp[0], "ISO-8859-1"), "");
-          }
-        }
-      }
-      parseHeaders();
-      if (headers == null) ret = 400;
-    }
-    else if (cmd[0].equals("POST")) {
-      // Not implemented
-    }
-    else {
-      // Bad request
-      ret = 400;
-    }
+	public String getHeader(String key) {
+		if (headers != null)
+			return (String) headers.get(key.toLowerCase());
+		else
+			return null;
+	}
 
-    if (this.ver.equals("1.1") && getHeader("Host") == null) {
-      ret = 400;
-    }
+	public Hashtable getHeaders() {
+		return headers;
+	}
 
-    return ret;
-  }
+	public String getRequestURL() {
+		return url;
+	}
 
-  private void parseHeaders() throws IOException {
-    String line;
-    int idx;
+	public String getParam(String key) {
+		return (String) params.get(key);
+	}
 
-    line = reader.readLine();
-    while (!line.equals("")) {
-      idx = line.indexOf(':');
-      if (idx < 0) {
-        headers = null;
-        break;
-      }
-      else {
-        headers.put(line.substring(0, idx).toLowerCase(), line.substring(idx+1).trim());
-      }
-      line = reader.readLine();
-    }
-  }
-	
-  public String getMethod() {
-    return method;
-  }
+	public Hashtable getParams() {
+		return params;
+	}
 
-  public String getHeader(String key) {
-    if (headers != null)
-      return (String) headers.get(key.toLowerCase());
-    else return null;
-  }
+	public String getVersion() {
+		return this.ver;
+	}
 
-  public Hashtable getHeaders() {
-    return headers;
-  }
+	public static String getHttpReply(int codevalue) {
+		String key, ret;
+		int i;
 
-  public String getRequestURL() {
-    return url;
-  }
+		ret = null;
+		key = "" + codevalue;
+		for (i = 0; i < HTTP_REPLY.length; i++) {
+			if (HTTP_REPLY[i][0].equals(key)) {
+				ret = codevalue + " " + HTTP_REPLY[i][1];
+				break;
+			}
+		}
 
-  public String getParam(String key) {
-    return (String) params.get(key);
-  }
+		return ret;
+	}
 
-  public Hashtable getParams() {
-    return params;
-  }
+	public String toString() {
+		String ret = "";
+		ret += this.method + this.url;
 
-  public String getVersion() {
-    return this.ver;
-  }
+		return ret;
+	}
 
+	public static String getDateHeader() {
+		SimpleDateFormat format;
+		String ret;
 
-  public static String getHttpReply(int codevalue) {
-    String key, ret;
-    int i;
+		format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
+		format.setTimeZone(TimeZone.getTimeZone("GMT"));
+		ret = "Date: " + format.format(new Date()) + " GMT";
 
-    ret = null;
-    key = "" + codevalue;
-    for (i=0; i<HTTP_REPLY.length; i++) {
-      if (HTTP_REPLY[i][0].equals(key)) {
-        ret = codevalue + " " + HTTP_REPLY[i][1];
-        break;
-      }
-    }
-
-    return ret;
-  }
-
-  public static String getDateHeader() {
-    SimpleDateFormat format;
-    String ret;
-
-    format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
-    format.setTimeZone(TimeZone.getTimeZone("GMT"));
-    ret = "Date: " + format.format(new Date()) + " GMT";
-
-    return ret;
-  }
+		return ret;
+	}
 }

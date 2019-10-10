@@ -6,7 +6,7 @@ public class Http_server
 { 
   //initialize socket and input stream 
   private static int PORT = 8080;
-  private static boolean DEBUG = true; 
+  private static boolean DEBUG = false; 
   
 	public static void main(String args[]) throws IOException 
 	{ 
@@ -23,7 +23,6 @@ public class Http_server
       OutputStreamWriter out = new OutputStreamWriter(socket.getOutputStream());
       
       int resp_type = req.parseRequest();
-      Date today = new Date();
       /* Sample responose
        * HTTP/1.1 200 OK\r\n
 		Date: Sun, 26 Sep 2010 20:09:20 GMT\r\n
@@ -42,13 +41,16 @@ public class Http_server
       if(DEBUG) {
           System.out.println("Request--------------------------------------------------");
           Hashtable headers = req.getHeaders();
+          System.out.println(req.getMethod() +" "+req.getRequestURL() + " HTTP/" + req.getVersion());
+          System.out.println(headers.toString());
           
       }
       /* Data, Server, Content-Length */
-      String response = "HTTP/1.1 " + req.getHttpReply(resp_type) + "\r\n" + today + "\r\n" + "Content-Length: 0\r\n";
+      String response = "HTTP/1.1 " + req.getHttpReply(resp_type) + "\r\n" + req.getDateHeader() + "\r\n" + "Content-Length: 0\r\n";
       socket.getOutputStream().write(response.getBytes("UTF-8"));
       
       if (DEBUG) {
+    	  System.out.println("Response--------------------------------------------------");
     	  System.out.println(response);
     	  System.out.println("Closing connection");
       }
