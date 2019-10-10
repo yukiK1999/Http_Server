@@ -6,7 +6,7 @@ public class Http_server
 { 
   //initialize socket and input stream 
   private static int PORT = 8080;
-  private static boolean DEBUG = false; 
+  private static boolean DEBUG = true; 
   
 	public static void main(String args[]) throws IOException 
 	{ 
@@ -40,7 +40,7 @@ public class Http_server
        */
       if(DEBUG) {
           System.out.println("Request--------------------------------------------------");
-          Hashtable headers = req.getHeaders();
+          Hashtable<String, String> headers = req.getHeaders();
           System.out.println(req.getMethod() +" "+req.getRequestURL() + " HTTP/" + req.getVersion());
           System.out.println(headers.toString());
           

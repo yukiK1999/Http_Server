@@ -5,11 +5,12 @@ import java.util.*;
 
 public class Http_parser {
 	private static final String[][] HTTP_REPLY = { { "200", "OK" }, { "400", "Bad Request" }, { "404", "Not Found" } };
+	private static final String[] hosts = {"/meme.com", "/cs356.org"};
 	private BufferedReader reader;
 	private String method, url;
-	private Hashtable headers, params;
+	private Hashtable <String, String>headers, params;
 	private String ver;
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 
 	// initialize socket and input output streams
 	// constructor to put ip address and port
@@ -18,8 +19,8 @@ public class Http_parser {
 		this.method = "";
 		this.url = "";
 		this.ver = "";
-		this.headers = new Hashtable();
-		this.params = new Hashtable();
+		this.headers = new Hashtable<String, String>();
+		this.params = new Hashtable<String, String>();
 	}
 
 	public int parseRequest() throws IOException {
@@ -54,12 +55,10 @@ public class Http_parser {
 				url = URLDecoder.decode(cmd[1].substring(0, idx), "ISO-8859-1");
 				prms = cmd[1].substring(idx + 1).split("&");
 
-				params = new Hashtable();
+				params = new Hashtable<String, String>();
 				for (i = 0; i < prms.length; i++) {
 					temp = prms[i].split("=");
 					if (temp.length == 2) {
-						// we use ISO-8859-1 as temporary charset and then
-						// String.getBytes("ISO-8859-1") to get the data
 						params.put(URLDecoder.decode(temp[0], "ISO-8859-1"), URLDecoder.decode(temp[1], "ISO-8859-1"));
 					} else if (temp.length == 1 && prms[i].indexOf('=') == prms[i].length() - 1) {
 						// handle empty string separatedly
@@ -85,16 +84,26 @@ public class Http_parser {
 			ret = 400;
 		}
 
-//		if (this.ver.equals("1.1") && getHeader("Host") == null) {
-//			ret = 400;
-//		}
+
 
 		return ret;
 	}
 	private boolean urlExist() {
 		File tmpDir = new File("." + this.url);
-		return tmpDir.exists();
+		if (tmpDir.exists()) {
+			return true;
+		}
+		int i;
+		for(i=0; i<this.hosts.length;i++) {
+			tmpDir = new File("." + this.hosts[i] + this.url);
+			if(tmpDir.exists()) {
+				return true;
+			}
+		}
+		return false;
 	}
+	
+	
 	private void parseHeaders() throws IOException {
 		String line;
 		int idx;
@@ -123,7 +132,7 @@ public class Http_parser {
 			return null;
 	}
 
-	public Hashtable getHeaders() {
+	public Hashtable<String, String> getHeaders() {
 		return headers;
 	}
 
@@ -135,7 +144,7 @@ public class Http_parser {
 		return (String) params.get(key);
 	}
 
-	public Hashtable getParams() {
+	public Hashtable<String, String> getParams() {
 		return params;
 	}
 
@@ -143,7 +152,7 @@ public class Http_parser {
 		return this.ver;
 	}
 
-	public static String getHttpReply(int codevalue) {
+	public String getHttpReply(int codevalue) {
 		String key, ret;
 		int i;
 
@@ -166,7 +175,7 @@ public class Http_parser {
 		return ret;
 	}
 
-	public static String getDateHeader() {
+	public String getDateHeader() {
 		SimpleDateFormat format;
 		String ret;
 
